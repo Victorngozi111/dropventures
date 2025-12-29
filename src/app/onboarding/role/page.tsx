@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
+import { Check } from "lucide-react";
 
 import { Button } from "@/components/shared/Button";
 import { Card } from "@/components/shared/Card";
@@ -60,40 +61,53 @@ function RoleSelectionContent() {
 
   if (!firebaseUser) {
     return (
-      <div className="mx-auto max-w-2xl text-center">
-        <p className="text-sm text-[color:var(--muted)]">Preparing your account...</p>
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-[color:var(--primary)] border-t-transparent" />
+          <p className="text-sm text-[color:var(--muted)]">Preparing your account...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-10">
-      <div className="text-center">
-        <h1 className="text-3xl font-bold text-[color:var(--foreground)]">Choose how you&#39;ll use DropVentures</h1>
-        <p className="mt-2 text-sm text-[color:var(--muted)]">
+    <div className="mx-auto max-w-5xl space-y-12 py-10">
+      <div className="text-center max-w-2xl mx-auto">
+        <h1 className="text-3xl font-bold tracking-tight text-[color:var(--foreground)] md:text-4xl">Choose how you&#39;ll use DropVentures</h1>
+        <p className="mt-4 text-base text-[color:var(--muted)]">
           Don&#39;t worry, you can switch roles later from your account settings.
         </p>
       </div>
-      {error && <p className="text-center text-sm text-red-500">{error}</p>}
-      <div className="grid gap-6 md:grid-cols-2">
+      
+      {error && (
+        <div className="mx-auto max-w-md rounded-xl bg-red-50 p-4 text-center text-sm text-red-600 border border-red-100">
+          {error}
+        </div>
+      )}
+      
+      <div className="grid gap-8 md:grid-cols-2">
         {roleCards.map((card) => (
-          <Card key={card.role} className="flex h-full flex-col justify-between p-8">
-            <div className="space-y-4">
+          <Card key={card.role} className="flex h-full flex-col justify-between p-8 border-[color:var(--border)] hover:border-[color:var(--primary)]/30 transition-all hover:shadow-lg">
+            <div className="space-y-6">
               <div>
-                <h2 className="text-2xl font-semibold text-[color:var(--foreground)]">{card.title}</h2>
-                <p className="mt-2 text-sm text-[color:var(--muted)]">{card.description}</p>
+                <h2 className="text-2xl font-bold text-[color:var(--foreground)]">{card.title}</h2>
+                <p className="mt-2 text-base text-[color:var(--muted)] leading-relaxed">{card.description}</p>
               </div>
-              <ul className="space-y-3 text-sm text-[color:var(--foreground)]">
+              <ul className="space-y-3">
                 {card.perks.map((perk) => (
-                  <li key={perk} className="rounded-2xl bg-[color:var(--surface)] px-4 py-3">
+                  <li key={perk} className="flex items-center gap-3 text-sm text-[color:var(--foreground)]">
+                    <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[color:var(--primary)]/10 text-[color:var(--primary)]">
+                      <Check className="h-3 w-3" />
+                    </div>
                     {perk}
                   </li>
                 ))}
               </ul>
             </div>
             <Button
-              className="mt-6 w-full py-3"
-              variant={card.role === "seller" ? "accent" : "primary"}
+              className="mt-8 w-full"
+              size="lg"
+              variant={card.role === "seller" ? "primary" : "outline"}
               loading={submitting}
               onClick={() => handleRoleSelect(card.role)}
             >
@@ -108,7 +122,7 @@ function RoleSelectionContent() {
 
 export default function RoleSelectionPage() {
   return (
-    <Suspense fallback={<div className="py-16 text-center text-sm text-[color:var(--muted)]">Loading…</div>}>
+    <Suspense fallback={<div className="flex min-h-[60vh] items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-[color:var(--primary)] border-t-transparent" /></div>}>
       <RoleSelectionContent />
     </Suspense>
   );

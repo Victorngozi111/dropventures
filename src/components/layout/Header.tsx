@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
-import { Menu, ShoppingCart, User, Search, Home, Store, Wallet } from "lucide-react";
+import { Menu, ShoppingCart, User, Search, Home, Store, Wallet, X } from "lucide-react";
 
 import { Button } from "@/components/shared/Button";
 import { Badge } from "@/components/shared/Badge";
@@ -31,157 +31,134 @@ export function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[color:var(--border)] bg-[color:var(--background-strong)]/95 backdrop-blur supports-[backdrop-filter]:bg-[color:var(--background-strong)]/80">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4">
+    <header className="sticky top-0 z-50 w-full border-b border-[color:var(--border)] bg-[color:var(--background-strong)]/80 backdrop-blur-md">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 md:px-6">
+        {/* Logo & Mobile Toggle */}
         <div className="flex items-center gap-4">
           <button
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--border)] text-[color:var(--muted)] md:hidden"
+            className="flex h-10 w-10 items-center justify-center rounded-xl border border-[color:var(--border)] text-[color:var(--muted)] transition hover:bg-[color:var(--surface-alt)] md:hidden"
             onClick={() => setMobileOpen((prev) => !prev)}
             aria-label="Toggle navigation"
           >
-            <Menu className="h-5 w-5" />
+            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
-          <Link href="/" className="flex items-center gap-2">
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-[color:var(--primary)] to-[color:var(--accent)] font-semibold text-white shadow-lg">
-              DV
-            </span>
+          <Link href="/" className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[color:var(--primary)] text-white shadow-sm">
+              <span className="font-bold">DV</span>
+            </div>
             <div className="hidden flex-col leading-none md:flex">
-              <span className="text-lg font-bold text-[color:var(--foreground)]">DropVentures</span>
-              <span className="text-xs font-medium text-[color:var(--muted)]">Africa&#39;s Dropshipping Superstore</span>
+              <span className="text-lg font-bold tracking-tight text-[color:var(--foreground)]">DropVentures</span>
             </div>
           </Link>
         </div>
 
-        <form className="hidden flex-1 items-center gap-2 rounded-full border border-[color:var(--border)] bg-[color:var(--background)] px-4 py-2 shadow-sm md:flex">
-          <Search className="h-4 w-4 text-[color:var(--muted)]" />
-          <input
-            className="flex-1 bg-transparent text-sm text-[color:var(--foreground)] outline-none placeholder:text-[color:var(--muted)]"
-            placeholder="Search for anything - products, suppliers, categories"
-            name="search"
-          />
-          <Badge tone="accent" className="hidden md:inline-flex">
-            CJ Synced
-          </Badge>
-        </form>
+        {/* Desktop Search */}
+        <div className="hidden max-w-md flex-1 md:block">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[color:var(--muted-light)]" />
+            <input
+              className="w-full rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-alt)] py-2 pl-10 pr-4 text-sm text-[color:var(--foreground)] outline-none transition-all focus:border-[color:var(--primary)] focus:bg-[color:var(--background-strong)] focus:ring-2 focus:ring-[color:var(--primary)]/20"
+              placeholder="Search products, categories..."
+            />
+          </div>
+        </div>
 
-        <div className="flex items-center gap-2 md:gap-4">
-          <Link
-            href="/buyer/cart"
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--border)] text-[color:var(--muted)] transition hover:text-[color:var(--primary)]"
-          >
-            <ShoppingCart className="h-5 w-5" />
+        {/* Actions */}
+        <div className="flex items-center gap-2 md:gap-3">
+          <Link href="/buyer/cart">
+            <Button variant="ghost" size="sm" className="h-10 w-10 rounded-full p-0">
+              <ShoppingCart className="h-5 w-5" />
+            </Button>
           </Link>
 
           {firebaseUser ? (
             <div className="hidden items-center gap-3 md:flex">
-              <div className="flex flex-col text-xs text-[color:var(--muted)]">
-                <span className="font-semibold text-[color:var(--foreground)]">{firebaseUser.displayName ?? firebaseUser.email}</span>
-                <span className="capitalize">
-                  {marketplaceUser?.role === "seller"
-                    ? marketplaceUser.sellerProfile?.verificationStatus === "verified"
-                      ? "Verified Seller"
-                      : "Seller Pending"
-                    : "Buyer"}
-                </span>
+              <div className="text-right hidden lg:block">
+                <p className="text-sm font-medium text-[color:var(--foreground)]">
+                  {firebaseUser.displayName || "User"}
+                </p>
+                <p className="text-xs text-[color:var(--muted)] capitalize">
+                  {marketplaceUser?.role === "seller" ? "Seller Account" : "Buyer Account"}
+                </p>
               </div>
-              <Button variant="secondary" onClick={() => router.push("/account")}>Account</Button>
-              <Button variant="ghost" onClick={handleSignOut}>
-                Sign out
+              <Button variant="outline" size="sm" onClick={() => router.push("/account")}>
+                Dashboard
               </Button>
             </div>
           ) : (
-            <div className="hidden items-center gap-3 md:flex">
-                <Button href="/auth/sign-in">Sign in</Button>
-                <Button variant="accent" href="/auth/sign-up">
-                  Create free account
-                </Button>
+            <div className="hidden items-center gap-2 md:flex">
+              <Button variant="ghost" size="sm" href="/auth/sign-in">
+                Log in
+              </Button>
+              <Button variant="primary" size="sm" href="/auth/sign-up">
+                Sign up
+              </Button>
             </div>
           )}
-
-          <Link
-            href={firebaseUser ? "/account" : "/auth/sign-in"}
-            className="flex h-10 w-10 items-center justify-center rounded-full border border-[color:var(--border)] text-[color:var(--muted)] transition hover:text-[color:var(--primary)] md:hidden"
-          >
-            <User className="h-5 w-5" />
-          </Link>
         </div>
       </div>
 
+      {/* Mobile Menu */}
       {mobileOpen && (
-        <nav className="border-t border-[color:var(--border)] bg-[color:var(--background-strong)] px-4 py-4 md:hidden">
-          <form className="mb-4 flex items-center gap-2 rounded-full border border-[color:var(--border)] bg-[color:var(--background)] px-4 py-2 shadow-sm">
-            <Search className="h-4 w-4 text-[color:var(--muted)]" />
+        <div className="border-t border-[color:var(--border)] bg-[color:var(--background-strong)] px-4 py-4 md:hidden animate-in slide-in-from-top-2">
+          <div className="mb-4 relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[color:var(--muted-light)]" />
             <input
-              className="flex-1 bg-transparent text-sm text-[color:var(--foreground)] outline-none placeholder:text-[color:var(--muted)]"
-              placeholder="Search DropVentures"
-              name="mobile-search"
+              className="w-full rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-alt)] py-2.5 pl-10 pr-4 text-sm outline-none"
+              placeholder="Search..."
             />
-          </form>
-          <div className="flex flex-col gap-2">
+          </div>
+          
+          <nav className="flex flex-col gap-1">
             {primaryNav.map((item) => {
               const isActive = pathname === item.href;
               const Icon = item.icon;
-
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm font-semibold transition ${
-                    isActive
-                      ? "border-[color:var(--primary)] bg-[color:var(--surface-alt)] text-[color:var(--primary-dark)]"
-                      : "border-[color:var(--border)] text-[color:var(--muted)] hover:border-[color:var(--primary)] hover:text-[color:var(--primary)]"
-                  }`}
                   onClick={() => setMobileOpen(false)}
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                    isActive
+                      ? "bg-[color:var(--primary)]/10 text-[color:var(--primary)]"
+                      : "text-[color:var(--muted)] hover:bg-[color:var(--surface-alt)] hover:text-[color:var(--foreground)]"
+                  }`}
                 >
                   <Icon className="h-4 w-4" />
                   {item.label}
                 </Link>
               );
             })}
-          </div>
-          <div className="mt-4 flex flex-col gap-2">
+          </nav>
+
+          <div className="mt-4 border-t border-[color:var(--border)] pt-4">
             {firebaseUser ? (
-              <Button variant="ghost" onClick={handleSignOut}>
-                Sign out
-              </Button>
-            ) : (
-              <>
-                <Button href="/auth/sign-in">Sign in</Button>
-                <Button variant="accent" href="/auth/sign-up">
-                  Open free account
+              <div className="space-y-2">
+                <div className="flex items-center gap-3 px-2 mb-2">
+                  <div className="h-8 w-8 rounded-full bg-[color:var(--primary)]/10 flex items-center justify-center text-[color:var(--primary)] font-bold">
+                    {firebaseUser.displayName?.[0] || "U"}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">{firebaseUser.displayName}</p>
+                    <p className="text-xs text-[color:var(--muted)]">{firebaseUser.email}</p>
+                  </div>
+                </div>
+                <Button fullWidth variant="outline" onClick={() => router.push("/account")}>
+                  Dashboard
                 </Button>
-              </>
+                <Button fullWidth variant="ghost" onClick={handleSignOut}>
+                  Sign out
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3">
+                <Button variant="outline" href="/auth/sign-in">Log in</Button>
+                <Button variant="primary" href="/auth/sign-up">Sign up</Button>
+              </div>
             )}
           </div>
-        </nav>
-      )}
-
-      <nav className="border-t border-[color:var(--border)] bg-[color:var(--background-strong)] py-2 shadow-sm">
-        <div className="mx-auto hidden max-w-7xl items-center justify-between px-4 md:flex">
-          <div className="flex items-center gap-6 text-sm font-semibold text-[color:var(--muted)]">
-            {primaryNav.map((item) => {
-              const isActive = pathname === item.href;
-              const Icon = item.icon;
-
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex items-center gap-2 rounded-full px-4 py-2 transition ${
-                    isActive
-                      ? "bg-[color:var(--surface-alt)] text-[color:var(--primary-dark)]"
-                      : "hover:bg-[color:var(--surface)] hover:text-[color:var(--primary)]"
-                  }`}
-                >
-                  <Icon className="h-4 w-4" />
-                  {item.label}
-                </Link>
-              );
-            })}
-          </div>
-          <Badge tone="neutral">Free nationwide shipping over ₦50k</Badge>
         </div>
-      </nav>
+      )}
     </header>
   );
 }

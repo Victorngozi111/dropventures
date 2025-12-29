@@ -10,6 +10,7 @@ import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 
 import { Button } from "@/components/shared/Button";
 import { Card } from "@/components/shared/Card";
+import { Input } from "@/components/shared/Input";
 import { getFirebaseAuth } from "@/lib/firebase/client";
 
 const schema = z
@@ -71,88 +72,70 @@ function SignUpContent() {
   };
 
   return (
-    <div className="relative mx-auto max-w-lg">
+    <div className="relative mx-auto max-w-md py-12">
       {redirecting && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-3xl bg-[color:var(--background)]/80 backdrop-blur">
-          <div className="h-10 w-10 animate-spin rounded-full border-2 border-[color:var(--primary)] border-t-transparent" aria-label="Redirecting" />
-          <span className="ml-3 text-sm font-semibold text-[color:var(--primary-dark)]">Creating your account…</span>
+        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-3xl bg-[color:var(--background)]/80 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-10 w-10 animate-spin rounded-full border-2 border-[color:var(--primary)] border-t-transparent" />
+            <span className="text-sm font-semibold text-[color:var(--primary-dark)]">Creating your account...</span>
+          </div>
         </div>
       )}
-      <Card className="p-8">
-        <div className="space-y-2 text-center">
-          <h1 className="text-2xl font-bold text-[color:var(--foreground)]">Create your DropVentures account</h1>
-          <p className="text-sm text-[color:var(--muted)]">
-            You will choose to continue as a buyer or seller after creating your account.
-          </p>
-        </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
-          <div className="space-y-2">
-            <label className="text-sm font-semibold text-[color:var(--muted)]" htmlFor="displayName">
-              Full name
-            </label>
-            <input
-              id="displayName"
-              className="w-full rounded-2xl border border-[color:var(--border)] bg-white px-4 py-3 text-sm text-[color:var(--foreground)] outline-none focus:border-[color:var(--primary)] focus:ring-2 focus:ring-[color:var(--primary)]/20"
-              placeholder="Jane Doe"
-              {...register("displayName")}
-            />
-            {errors.displayName && <p className="text-sm text-red-500">{errors.displayName.message}</p>}
-          </div>
+      
+      <div className="mb-8 text-center">
+        <h1 className="text-3xl font-bold tracking-tight text-[color:var(--foreground)]">Create your account</h1>
+        <p className="mt-2 text-sm text-[color:var(--muted)]">
+          Join DropVentures to start buying or selling today.
+        </p>
+      </div>
 
-          <div className="space-y-2">
-            <label className="text-sm font-semibold text-[color:var(--muted)]" htmlFor="email">
-              Email address
-            </label>
-            <input
-              id="email"
-              type="email"
-              className="w-full rounded-2xl border border-[color:var(--border)] bg-white px-4 py-3 text-sm text-[color:var(--foreground)] outline-none focus:border-[color:var(--primary)] focus:ring-2 focus:ring-[color:var(--primary)]/20"
-              placeholder="you@example.com"
-              {...register("email")}
-            />
-            {errors.email && <p className="text-sm text-red-500">{errors.email.message}</p>}
-          </div>
+      <Card className="p-6 md:p-8 shadow-xl border-[color:var(--border)]">
+        <form className="space-y-5" onSubmit={handleSubmit(onSubmit)}>
+          <Input
+            label="Full name"
+            placeholder="Jane Doe"
+            error={errors.displayName?.message}
+            {...register("displayName")}
+          />
 
-          <div className="space-y-2">
-            <label className="text-sm font-semibold text-[color:var(--muted)]" htmlFor="password">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              className="w-full rounded-2xl border border-[color:var(--border)] bg-white px-4 py-3 text-sm text-[color:var(--foreground)] outline-none focus:border-[color:var(--primary)] focus:ring-2 focus:ring-[color:var(--primary)]/20"
-              placeholder="••••••••"
-              {...register("password")}
-            />
-            {errors.password && <p className="text-sm text-red-500">{errors.password.message}</p>}
-          </div>
+          <Input
+            label="Email address"
+            type="email"
+            placeholder="you@example.com"
+            error={errors.email?.message}
+            {...register("email")}
+          />
 
-          <div className="space-y-2">
-            <label className="text-sm font-semibold text-[color:var(--muted)]" htmlFor="confirmPassword">
-              Confirm password
-            </label>
-            <input
-              id="confirmPassword"
-              type="password"
-              className="w-full rounded-2xl border border-[color:var(--border)] bg-white px-4 py-3 text-sm text-[color:var(--foreground)] outline-none focus:border-[color:var(--primary)] focus:ring-2 focus:ring-[color:var(--primary)]/20"
-              placeholder="••••••••"
-              {...register("confirmPassword")}
-            />
-            {errors.confirmPassword && (
-              <p className="text-sm text-red-500">{errors.confirmPassword.message}</p>
-            )}
-          </div>
+          <Input
+            label="Password"
+            type="password"
+            placeholder=""
+            error={errors.password?.message}
+            {...register("password")}
+          />
 
-          {errorMessage && <p className="text-sm text-red-500">{errorMessage}</p>}
+          <Input
+            label="Confirm password"
+            type="password"
+            placeholder=""
+            error={errors.confirmPassword?.message}
+            {...register("confirmPassword")}
+          />
 
-          <Button type="submit" className="w-full py-3" loading={isSubmitting}>
+          {errorMessage && (
+            <div className="rounded-xl bg-red-50 p-3 text-sm text-red-600 border border-red-100">
+              {errorMessage}
+            </div>
+          )}
+
+          <Button type="submit" fullWidth size="lg" loading={isSubmitting}>
             Create account
           </Button>
         </form>
 
         <div className="mt-6 text-center text-sm text-[color:var(--muted)]">
           <span>Already have an account? </span>
-          <Link className="font-semibold text-[color:var(--primary)]" href={`/auth/sign-in?redirect=${encodeURIComponent(redirectTo)}`}>
+          <Link className="font-semibold text-[color:var(--primary)] hover:underline" href={`/auth/sign-in?redirect=${encodeURIComponent(redirectTo)}`}>
             Sign in instead
           </Link>
         </div>
@@ -163,7 +146,7 @@ function SignUpContent() {
 
 export default function SignUpPage() {
   return (
-    <Suspense fallback={<div className="py-16 text-center text-sm text-[color:var(--muted)]">Loading…</div>}>
+    <Suspense fallback={<div className="flex min-h-[60vh] items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-[color:var(--primary)] border-t-transparent" /></div>}>
       <SignUpContent />
     </Suspense>
   );

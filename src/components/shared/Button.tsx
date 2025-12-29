@@ -3,14 +3,17 @@
 import Link from "next/link";
 import clsx from "clsx";
 import { type ButtonHTMLAttributes, forwardRef } from "react";
+import { Loader2 } from "lucide-react";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: "primary" | "secondary" | "ghost" | "accent";
+  variant?: "primary" | "secondary" | "ghost" | "accent" | "outline" | "destructive";
+  size?: "sm" | "md" | "lg";
   loading?: boolean;
   href?: string;
   prefetch?: boolean;
   target?: string;
   rel?: string;
+  fullWidth?: boolean;
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -19,38 +22,56 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       className,
       children,
       variant = "primary",
+      size = "md",
       loading = false,
       disabled,
       href,
       prefetch,
       target,
       rel,
+      fullWidth = false,
       ...rest
     },
     ref
   ) => {
     const baseStyles =
-      "inline-flex items-center justify-center rounded-full font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
+      "inline-flex items-center justify-center rounded-xl font-medium transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 disabled:cursor-not-allowed disabled:opacity-60 active:scale-[0.98]";
 
     const variants: Record<NonNullable<ButtonProps["variant"]>, string> = {
       primary:
-        "bg-[color:var(--primary)] text-white hover:bg-[color:var(--primary-dark)] focus-visible:outline-[color:var(--primary)]",
+        "bg-[color:var(--primary)] text-[color:var(--primary-foreground)] hover:bg-[color:var(--primary-dark)] focus-visible:outline-[color:var(--primary)] shadow-sm hover:shadow-md",
       secondary:
-        "bg-[color:var(--surface)] text-[color:var(--primary-dark)] hover:bg-[color:var(--surface-alt)] focus-visible:outline-[color:var(--surface-alt)]",
+        "bg-[color:var(--surface-alt)] text-[color:var(--foreground)] hover:bg-[color:var(--border)] focus-visible:outline-[color:var(--border)]",
       ghost:
-        "bg-transparent text-[color:var(--muted)] hover:bg-[color:var(--surface)] focus-visible:outline-[color:var(--primary)]",
+        "bg-transparent text-[color:var(--muted)] hover:bg-[color:var(--surface-alt)] hover:text-[color:var(--foreground)] focus-visible:outline-[color:var(--primary)]",
       accent:
-        "bg-[color:var(--accent)] text-white hover:bg-[color:var(--accent-dark)] focus-visible:outline-[color:var(--accent)]",
+        "bg-[color:var(--accent)] text-[color:var(--accent-foreground)] hover:bg-[color:var(--accent-dark)] focus-visible:outline-[color:var(--accent)] shadow-sm hover:shadow-md",
+      outline:
+        "bg-transparent border border-[color:var(--border)] text-[color:var(--foreground)] hover:bg-[color:var(--surface-alt)] focus-visible:outline-[color:var(--primary)]",
+      destructive:
+        "bg-[color:var(--destructive)] text-white hover:bg-red-600 focus-visible:outline-[color:var(--destructive)]",
+    };
+
+    const sizes: Record<NonNullable<ButtonProps["size"]>, string> = {
+      sm: "px-3 py-1.5 text-xs",
+      md: "px-5 py-2.5 text-sm",
+      lg: "px-6 py-3.5 text-base",
     };
 
     const composedClassName = clsx(
       baseStyles,
       variants[variant],
-      "px-5 py-2 text-sm md:text-base",
+      sizes[size],
+      fullWidth && "w-full",
       className
     );
 
-    const { onClick, ...buttonProps } = rest;
+    const content = (
+      <>
+        {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        {children}
+      </>
+    );
 
     if (href) {
       return (
@@ -65,10 +86,10 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
             if (disabled || loading) {
               event.preventDefault();
             }
-            onClick?.(event as never);
+            rest.onClick?.(event as never);
           }}
         >
-          {loading ? "Processing..." : children}
+          {content}
         </Link>
       );
     }
@@ -78,9 +99,9 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         disabled={disabled ?? loading}
         className={composedClassName}
-        {...buttonProps}
+        {...rest}
       >
-        {loading ? "Processing..." : children}
+        {content}
       </button>
     );
   }
