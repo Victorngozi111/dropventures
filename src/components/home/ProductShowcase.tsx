@@ -38,7 +38,7 @@ export async function ProductShowcase() {
                 sizes="(min-width: 1280px) 25vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
               />
               <div className="absolute left-3 top-3 flex flex-col gap-2">
-                {product.shippingTimeInDays <= 7 && (
+                {((product.shippingTimeInDays ?? 999) <= 7) && (
                   <Badge tone="accent" className="shadow-sm">Fast ship</Badge>
                 )}
               </div>
@@ -50,7 +50,7 @@ export async function ProductShowcase() {
                     {product.category}
                   </p>
                   <div className="flex items-center gap-1 text-xs font-medium text-[color:var(--warning)]">
-                    <span></span>
+                    <span>★</span>
                     <span>{product.rating.toFixed(1)}</span>
                   </div>
                 </div>
