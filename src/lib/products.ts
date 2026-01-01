@@ -12,8 +12,9 @@ interface GetProductsOptions {
   pages?: number;
 }
 
-const MAX_PAGE_SIZE = 60;
-const MAX_PAGES = 3;
+// Fetch more products per run to better fill the grid when CJ credentials are set.
+const MAX_PAGE_SIZE = 100;
+const MAX_PAGES = 5;
 
 function normalizedId(item: CjProductRaw | null | undefined): string {
   if (!item) return "";
