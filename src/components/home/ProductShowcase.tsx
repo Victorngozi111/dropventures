@@ -7,6 +7,8 @@ import { Button } from "@/components/shared/Button";
 import { getProducts } from "@/lib/products";
 import { formatCurrency } from "@/utils/currency";
 
+export const dynamic = "force-dynamic";
+
 export async function ProductShowcase() {
   const products = await getProducts({ limit: 8 });
 

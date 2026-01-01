@@ -22,6 +22,7 @@ type SellerVerifyValues = z.infer<typeof schema>;
 export default function SellerVerifyPage() {
   const { firebaseUser, marketplaceUser, refreshProfile } = useAuth();
   const router = useRouter();
+  const paystackKey = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY;
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -84,6 +85,8 @@ export default function SellerVerifyPage() {
     marketplaceUser?.sellerProfile?.verificationStatus === "pending" &&
     Boolean(marketplaceUser?.sellerProfile?.paystackReference);
 
+  const paystackUnavailable = !paystackKey;
+
   return (
     <div className="mx-auto max-w-3xl space-y-8">
       <Card className="p-8">
@@ -121,11 +124,23 @@ export default function SellerVerifyPage() {
             {errors.businessEmail && <p className="text-sm text-red-500">{errors.businessEmail.message}</p>}
           </div>
 
-          <Button type="submit" className="w-full py-3" loading={isProcessing} disabled={hasPaid}>
-            {hasPaid ? "Awaiting verification" : "Pay ₦2,000 via Paystack"}
+          <Button
+            type="submit"
+            className="w-full py-3"
+            loading={isProcessing}
+            disabled={hasPaid || paystackUnavailable}
+          >
+            {hasPaid
+              ? "Awaiting verification"
+              : paystackUnavailable
+              ? "Paystack key missing"
+              : "Pay ₦2,000 via Paystack"}
           </Button>
         </form>
         {statusMessage && <p className="mt-4 text-sm text-[color:var(--muted)]">{statusMessage}</p>}
+        {paystackUnavailable && (
+          <p className="mt-3 text-sm text-red-500">Set NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY in Vercel to enable checkout.</p>
+        )}
       </Card>
     </div>
   );
