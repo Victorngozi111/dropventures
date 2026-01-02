@@ -10,6 +10,7 @@ interface GetProductsOptions {
   limit?: number;
   keyword?: string;
   pages?: number;
+  maxPrice?: number; // optional cap to favor cheaper products
 }
 
 // Fetch more products per run to better fill the grid when CJ credentials are set.
@@ -95,6 +96,10 @@ function shuffle<T>(arr: T[]): T[] {
   return copy;
 }
 
+function sortByPriceAscending(list: Product[]): Product[] {
+  return [...list].sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
+}
+
 function buildFallback(options: GetProductsOptions, minimum: number): Product[] {
   const base = options.category
     ? mockProducts.filter((product) => product.category === options.category)
@@ -143,18 +148,29 @@ export async function getProducts(options: GetProductsOptions = {}): Promise<Pro
       combinedRaw.map((item) => normalizeCjProduct(item)).filter(Boolean) as Product[]
     );
 
-    const filtered = options.category
+    const byCategory = options.category
       ? normalized.filter((product) => product.category?.toLowerCase() === options.category?.toLowerCase())
       : normalized;
 
+    const byPrice = options.maxPrice
+      ? byCategory.filter((product) => Number.isFinite(product.price) && product.price <= options.maxPrice!)
+      : byCategory;
+
+    // Prefer cheaper items when requested; fall back to category list if price filter empties the set.
+    const filtered = options.maxPrice && byPrice.length > 0 ? byPrice : byCategory;
+
     const minimum = options.limit ?? 24;
-    let filled = filtered;
+    const prioritized = options.maxPrice ? sortByPriceAscending(filtered) : filtered;
+    let filled = prioritized;
 
     if (filled.length < minimum) {
       const extras = buildFallback(options, minimum).filter(
         (product) => !filled.some((p) => p.id === product.id)
       );
-      filled = [...filled, ...extras].slice(0, minimum);
+      const merged = [...filled, ...extras];
+      filled = options.maxPrice
+        ? sortByPriceAscending(merged.filter((p) => p.price <= options.maxPrice!)).slice(0, minimum)
+        : merged.slice(0, minimum);
     }
 
     const sliced = options.limit ? filled.slice(0, options.limit) : filled;
