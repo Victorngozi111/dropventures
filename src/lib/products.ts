@@ -13,9 +13,9 @@ interface GetProductsOptions {
   maxPrice?: number; // optional cap to favor cheaper products
 }
 
-// Fetch more products per run to better fill the grid when CJ credentials are set.
+// CJ listV2 allows size up to 100; fetch more pages when available.
 const MAX_PAGE_SIZE = 100;
-const MAX_PAGES = 5;
+const MAX_PAGES = 30;
 
 function normalizedId(item: CjProductRaw | null | undefined): string {
   if (!item) return "";
@@ -64,9 +64,16 @@ function extractCjList(response: CjProductListResponse | null): CjProductRaw[] {
   if (!response) return [];
   if (Array.isArray(response)) return response;
 
+  // API 2.0 listV2: data.content[0].productList holds the items.
+  const content = (response as any)?.data?.content;
+  if (Array.isArray(content) && content.length > 0) {
+    const productList = content[0]?.productList;
+    if (Array.isArray(productList)) return productList;
+  }
+
   const dataValue = response.data;
   if (Array.isArray(dataValue)) return dataValue;
-  if (Array.isArray(dataValue?.list)) return dataValue.list;
+  if (Array.isArray((dataValue as any)?.list)) return (dataValue as any).list;
   if (Array.isArray(response.list)) return response.list;
 
   return [];
@@ -125,23 +132,41 @@ function buildFallback(options: GetProductsOptions, minimum: number): Product[] 
 
 export async function getProducts(options: GetProductsOptions = {}): Promise<Product[]> {
   try {
-    const desired = options.limit ?? 60;
-    const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(12, desired));
-    const pages = Math.min(MAX_PAGES, Math.max(1, options.pages ?? Math.ceil(desired / pageSize)));
+    const desired = options.limit ?? 120;
+    const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(20, desired));
 
-    const pagePromises = Array.from({ length: pages }, (_, index) => {
-      const filters: CjProductFilters = {
-        keyword: options.keyword,
-        categoryId: options.category,
-        page: index + 1,
-        size: pageSize,
-      };
-      return fetchCjProducts(filters);
+    // First page to discover total pages, then fetch remaining up to MAX_PAGES.
+    const firstResponse = await fetchCjProducts({
+      keyword: options.keyword,
+      categoryId: options.category,
+      page: 1,
+      size: pageSize,
     });
 
-    const responses = await Promise.all(pagePromises);
+    const firstPageList = extractCjList(firstResponse);
+    const totalPages = Math.min(
+      MAX_PAGES,
+      Math.max(
+        1,
+        Number((firstResponse as any)?.data?.totalPages ?? (firstResponse as any)?.totalPages ?? 1)
+      )
+    );
+
+    const remainingPages = Array.from({ length: Math.max(0, totalPages - 1) }, (_, index) => index + 2);
+
+    const remainingResponses = await Promise.all(
+      remainingPages.map((page) =>
+        fetchCjProducts({
+          keyword: options.keyword,
+          categoryId: options.category,
+          page,
+          size: pageSize,
+        })
+      )
+    );
+
     const combinedRaw = dedupeProducts(
-      responses.flatMap((response) => extractCjList(response))
+      [firstPageList, ...remainingResponses.map((response) => extractCjList(response))].flat()
     );
 
     const normalized = shuffle(
@@ -156,32 +181,20 @@ export async function getProducts(options: GetProductsOptions = {}): Promise<Pro
       ? byCategory.filter((product) => Number.isFinite(product.price) && product.price <= options.maxPrice!)
       : byCategory;
 
-    // Prefer cheaper items when requested; fall back to category list if price filter empties the set.
-    const filtered = options.maxPrice && byPrice.length > 0 ? byPrice : byCategory;
+    // Prefer cheaper items when requested.
+    const filtered = options.maxPrice ? byPrice : byCategory;
 
-    const minimum = options.limit ?? 24;
+    const minimum = options.limit ?? filtered.length;
     const prioritized = options.maxPrice ? sortByPriceAscending(filtered) : filtered;
-    let filled = prioritized;
-
-    if (filled.length < minimum) {
-      const extras = buildFallback(options, minimum).filter(
-        (product) => !filled.some((p) => p.id === product.id)
-      );
-      const merged = [...filled, ...extras];
-      filled = options.maxPrice
-        ? sortByPriceAscending(merged.filter((p) => p.price <= options.maxPrice!)).slice(0, minimum)
-        : merged.slice(0, minimum);
-    }
-
-    const sliced = options.limit ? filled.slice(0, options.limit) : filled;
+    const sliced = options.limit ? prioritized.slice(0, options.limit) : prioritized;
 
     if (sliced.length > 0) return sliced;
   } catch (error) {
     console.warn("CJdropshipping fetch failed; falling back to mock data", error);
   }
 
-  const fallback = buildFallback(options, 12);
-  return fallback;
+  // Do not fabricate items; return empty on failure.
+  return [];
 }
 
 export async function getProductById(id: string): Promise<Product | null> {
