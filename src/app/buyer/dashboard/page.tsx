@@ -15,6 +15,8 @@ function categorySummary(products: Awaited<ReturnType<typeof getProducts>>) {
   return totals;
 }
 
+export const dynamic = "force-dynamic";
+
 export default async function BuyerDashboardPage() {
   const products = await getProducts({ limit: 48, pages: 3 });
   const totals = categorySummary(products);

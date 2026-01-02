@@ -3,6 +3,8 @@ import { Button } from "@/components/shared/Button";
 import { getProducts } from "@/lib/products";
 import { formatCurrency } from "@/utils/currency";
 
+export const dynamic = "force-dynamic";
+
 export default async function NewArrivalsPage() {
   const arrivals = await getProducts({ limit: 12 });
 

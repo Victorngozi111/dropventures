@@ -4,6 +4,8 @@ import { Button } from "@/components/shared/Button";
 import { getProducts } from "@/lib/products";
 import { formatCurrency } from "@/utils/currency";
 
+export const dynamic = "force-dynamic";
+
 export default async function DealsPage() {
   const products = await getProducts({ limit: 12 });
   const deals = products.map((product, index) => ({
