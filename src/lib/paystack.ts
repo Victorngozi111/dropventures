@@ -32,8 +32,8 @@ export async function launchPaystackCheckout(options: PaystackCheckoutOptions): 
     throw new Error("Paystack can only run in the browser");
   }
 
-  try {
-    const { default: PaystackPop } = await import("@paystack/inline-js");
+  // Helper to open checkout using either module import or global script.
+  const openCheckout = (PaystackPop: any) => {
     const paystack = new PaystackPop();
     paystack.newTransaction({
       key: publicKey,
@@ -42,15 +42,47 @@ export async function launchPaystackCheckout(options: PaystackCheckoutOptions): 
       currency: options.currency ?? "NGN",
       reference: options.reference,
       metadata: options.metadata,
-      onSuccess: (response) => {
+      onSuccess: (response: { reference: string }) => {
         options.onSuccess?.(response.reference);
       },
       onCancel: () => {
         options.onCancel?.();
       },
     });
+  };
+
+  try {
+    const { default: PaystackPop } = await import("@paystack/inline-js");
+    openCheckout(PaystackPop);
+    return;
   } catch (error) {
-    console.error("Failed to load Paystack SDK", error);
-    throw error instanceof Error ? error : new Error("Failed to load Paystack SDK");
+    console.warn("Paystack inline-js import failed, falling back to CDN", error);
   }
+
+  // Fallback: load CDN script and use window.PaystackPop
+  const loadScript = () =>
+    new Promise<void>((resolve, reject) => {
+      const existing = document.querySelector("script[data-paystack-cdn]") as HTMLScriptElement | null;
+      if (existing && existing.dataset.loaded === "true") {
+        resolve();
+        return;
+      }
+      const script = existing ?? document.createElement("script");
+      script.src = "https://js.paystack.co/v1/inline.js";
+      script.async = true;
+      script.dataset.paystackCdn = "true";
+      script.onload = () => {
+        script.dataset.loaded = "true";
+        resolve();
+      };
+      script.onerror = () => reject(new Error("Failed to load Paystack CDN script"));
+      if (!existing) document.body.appendChild(script);
+    });
+
+  await loadScript();
+  const win = window as unknown as { PaystackPop?: any };
+  if (!win.PaystackPop) {
+    throw new Error("Paystack SDK unavailable after CDN load");
+  }
+  openCheckout(win.PaystackPop);
 }

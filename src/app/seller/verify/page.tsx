@@ -81,8 +81,8 @@ export default function SellerVerifyPage() {
         },
       });
     } catch (error) {
-      console.error(error);
-      setStatusMessage("Unable to start Paystack checkout. Please reload and try again.");
+      console.error("Paystack checkout failed to start", error);
+      setStatusMessage("Unable to start Paystack checkout. Please reload and try again, or contact support if it persists.");
       setIsProcessing(false);
     }
   };
