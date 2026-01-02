@@ -108,6 +108,7 @@ export async function fetchCjProducts(filters: CjProductFilters = {}): Promise<C
   const response = await fetch(`${CJ_BASE_URL}/product/list?${params.toString()}`, {
     headers: {
       Authorization: token,
+      "CJ-Access-Token": token,
     },
     cache: "no-store",
   });
