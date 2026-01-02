@@ -1,5 +1,4 @@
-import { fetchCjProducts, type CjProductFilters, type CjProductListResponse, type CjProductRaw } from "./cj";
-import { mockProducts } from "@/data/mockData";
+import { fetchCjProducts, type CjProductListResponse, type CjProductRaw } from "./cj";
 import { type Product } from "@/types/product";
 
 const placeholderImage =
@@ -12,6 +11,16 @@ interface GetProductsOptions {
   pages?: number;
   maxPrice?: number; // optional cap to favor cheaper products
 }
+
+type CjListV2Data = {
+  content?: Array<{ productList?: CjProductRaw[]; totalPages?: number }>;
+  totalPages?: number;
+};
+
+type CjListV2Response = CjProductListResponse & {
+  data?: CjListV2Data;
+  totalPages?: number;
+};
 
 // CJ listV2 allows size up to 100; fetch more pages when available.
 const MAX_PAGE_SIZE = 100;
@@ -65,15 +74,17 @@ function extractCjList(response: CjProductListResponse | null): CjProductRaw[] {
   if (Array.isArray(response)) return response;
 
   // API 2.0 listV2: data.content[0].productList holds the items.
-  const content = (response as any)?.data?.content;
+  const data = (response as CjListV2Response).data;
+  const content = data?.content;
   if (Array.isArray(content) && content.length > 0) {
-    const productList = content[0]?.productList;
+    const productList = content[0]?.productList ?? [];
     if (Array.isArray(productList)) return productList;
   }
 
   const dataValue = response.data;
   if (Array.isArray(dataValue)) return dataValue;
-  if (Array.isArray((dataValue as any)?.list)) return (dataValue as any).list;
+  const listValue = (dataValue as CjProductListResponse | undefined)?.list;
+  if (Array.isArray(listValue)) return listValue;
   if (Array.isArray(response.list)) return response.list;
 
   return [];
@@ -107,29 +118,6 @@ function sortByPriceAscending(list: Product[]): Product[] {
   return [...list].sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
 }
 
-function buildFallback(options: GetProductsOptions, minimum: number): Product[] {
-  const base = options.category
-    ? mockProducts.filter((product) => product.category === options.category)
-    : mockProducts;
-
-  if (base.length >= minimum) {
-    return options.limit ? base.slice(0, options.limit) : base;
-  }
-
-  // If we need more items for a category, clone other mock products into the requested category.
-  const extras = mockProducts
-    .filter((product) => product.category !== options.category)
-    .map((product, index) => ({
-      ...product,
-      id: `${options.category ?? "general"}-fallback-${index}-${product.id}`,
-      category: options.category ?? product.category,
-      title: `${product.title} (${options.category ?? "featured"})`,
-    }));
-
-  const combined = [...base, ...extras];
-  return options.limit ? combined.slice(0, options.limit) : combined;
-}
-
 export async function getProducts(options: GetProductsOptions = {}): Promise<Product[]> {
   try {
     const desired = options.limit ?? 120;
@@ -144,13 +132,9 @@ export async function getProducts(options: GetProductsOptions = {}): Promise<Pro
     });
 
     const firstPageList = extractCjList(firstResponse);
-    const totalPages = Math.min(
-      MAX_PAGES,
-      Math.max(
-        1,
-        Number((firstResponse as any)?.data?.totalPages ?? (firstResponse as any)?.totalPages ?? 1)
-      )
-    );
+    const firstTyped = firstResponse as CjListV2Response | null;
+    const totalPagesFromApi = firstTyped?.data?.totalPages ?? firstTyped?.totalPages;
+    const totalPages = Math.min(MAX_PAGES, Math.max(1, Number(totalPagesFromApi ?? 1)));
 
     const remainingPages = Array.from({ length: Math.max(0, totalPages - 1) }, (_, index) => index + 2);
 
@@ -184,7 +168,6 @@ export async function getProducts(options: GetProductsOptions = {}): Promise<Pro
     // Prefer cheaper items when requested.
     const filtered = options.maxPrice ? byPrice : byCategory;
 
-    const minimum = options.limit ?? filtered.length;
     const prioritized = options.maxPrice ? sortByPriceAscending(filtered) : filtered;
     const sliced = options.limit ? prioritized.slice(0, options.limit) : prioritized;
 
@@ -202,6 +185,5 @@ export async function getProductById(id: string): Promise<Product | null> {
   const found = products.find((product) => product.id === id);
   if (found) return found;
 
-  const mock = mockProducts.find((product) => product.id === id);
-  return mock ?? null;
+  return null;
 }

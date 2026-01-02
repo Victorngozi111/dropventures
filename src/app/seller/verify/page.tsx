@@ -38,47 +38,53 @@ export default function SellerVerifyPage() {
     },
   });
 
-  const onSubmit = (values: SellerVerifyValues) => {
+  const onSubmit = async (values: SellerVerifyValues) => {
     if (!firebaseUser) return;
     setIsProcessing(true);
     setStatusMessage(null);
 
-    launchPaystackCheckout({
-      email: values.businessEmail,
-      amount: 2000 * 100, // convert to kobo
-      metadata: {
-        userId: firebaseUser.uid,
-        businessName: values.businessName,
-      },
-      onSuccess: async (reference) => {
-        try {
-          await upsertMarketplaceUser({
-            uid: firebaseUser.uid,
-            email: firebaseUser.email,
-            displayName: firebaseUser.displayName,
-            role: "seller",
-            sellerProfile: {
-              businessName: values.businessName,
-              businessEmail: values.businessEmail,
-              paystackReference: reference,
-              verificationStatus: "pending",
-            },
-          });
-          await refreshProfile();
-          setStatusMessage("Payment received! Our team will verify you within 48 hours.");
-          router.push("/seller/dashboard");
-        } catch (error) {
-          console.error(error);
-          setStatusMessage("We received your payment but could not update your profile. Contact support.");
-        } finally {
+    try {
+      await launchPaystackCheckout({
+        email: values.businessEmail,
+        amount: 2000 * 100, // convert to kobo
+        metadata: {
+          userId: firebaseUser.uid,
+          businessName: values.businessName,
+        },
+        onSuccess: async (reference) => {
+          try {
+            await upsertMarketplaceUser({
+              uid: firebaseUser.uid,
+              email: firebaseUser.email,
+              displayName: firebaseUser.displayName,
+              role: "seller",
+              sellerProfile: {
+                businessName: values.businessName,
+                businessEmail: values.businessEmail,
+                paystackReference: reference,
+                verificationStatus: "pending",
+              },
+            });
+            await refreshProfile();
+            setStatusMessage("Payment received! Our team will verify you within 48 hours.");
+            router.push("/seller/dashboard");
+          } catch (error) {
+            console.error(error);
+            setStatusMessage("We received your payment but could not update your profile. Contact support.");
+          } finally {
+            setIsProcessing(false);
+          }
+        },
+        onCancel: () => {
           setIsProcessing(false);
-        }
-      },
-      onCancel: () => {
-        setIsProcessing(false);
-        setStatusMessage("Payment was cancelled. You can try again when ready.");
-      },
-    });
+          setStatusMessage("Payment was cancelled. You can try again when ready.");
+        },
+      });
+    } catch (error) {
+      console.error(error);
+      setStatusMessage("Unable to start Paystack checkout. Please reload and try again.");
+      setIsProcessing(false);
+    }
   };
 
   const hasPaid =

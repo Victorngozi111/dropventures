@@ -3,10 +3,9 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
-import { Menu, ShoppingCart, User, Search, Home, Store, Wallet, X } from "lucide-react";
+import { Menu, ShoppingCart, Search, Home, Store, Wallet, X } from "lucide-react";
 
 import { Button } from "@/components/shared/Button";
-import { Badge } from "@/components/shared/Badge";
 import { useAuth } from "@/hooks/useAuth";
 import { signOut } from "firebase/auth";
 import { getFirebaseAuth } from "@/lib/firebase/client";
