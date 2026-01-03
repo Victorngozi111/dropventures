@@ -14,6 +14,7 @@
     "@paystack/inline-js": "^2.22.7",
     "axios": "^1.13.2",
     "clsx": "^2.1.1",
+    "dotenv": "^17.2.3",
     "firebase": "^12.6.0",
     "framer-motion": "^12.23.26",
     "lucide-react": "^0.561.0",

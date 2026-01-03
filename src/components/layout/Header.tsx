@@ -22,6 +22,8 @@ export function Header() {
   const router = useRouter();
   const { firebaseUser, marketplaceUser } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [mobileSearch, setMobileSearch] = useState("");
 
   const handleSignOut = async () => {
     const auth = getFirebaseAuth();
@@ -53,13 +55,23 @@ export function Header() {
 
         {/* Desktop Search */}
         <div className="hidden max-w-md flex-1 md:block">
-          <div className="relative">
+          <form
+            className="relative"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const term = searchQuery.trim();
+              if (term.length === 0) return;
+              router.push(`/search?q=${encodeURIComponent(term)}`);
+            }}
+          >
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[color:var(--muted-light)]" />
             <input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-alt)] py-2 pl-10 pr-4 text-sm text-[color:var(--foreground)] outline-none transition-all focus:border-[color:var(--primary)] focus:bg-[color:var(--background-strong)] focus:ring-2 focus:ring-[color:var(--primary)]/20"
-              placeholder="Search products, categories..."
+              placeholder="Search products or SKUs"
             />
-          </div>
+          </form>
         </div>
 
         {/* Actions */}
@@ -102,10 +114,22 @@ export function Header() {
         <div className="border-t border-[color:var(--border)] bg-[color:var(--background-strong)] px-4 py-4 md:hidden animate-in slide-in-from-top-2">
           <div className="mb-4 relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[color:var(--muted-light)]" />
-            <input
-              className="w-full rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-alt)] py-2.5 pl-10 pr-4 text-sm outline-none"
-              placeholder="Search..."
-            />
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const term = mobileSearch.trim();
+                if (!term) return;
+                setMobileOpen(false);
+                router.push(`/search?q=${encodeURIComponent(term)}`);
+              }}
+            >
+              <input
+                value={mobileSearch}
+                onChange={(e) => setMobileSearch(e.target.value)}
+                className="w-full rounded-xl border border-[color:var(--border)] bg-[color:var(--surface-alt)] py-2.5 pl-10 pr-4 text-sm outline-none"
+                placeholder="Search products or SKUs"
+              />
+            </form>
           </div>
           
           <nav className="flex flex-col gap-1">

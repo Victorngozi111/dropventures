@@ -1,4 +1,10 @@
-import { fetchCjProducts, type CjProductListResponse, type CjProductRaw } from "./cj";
+import {
+  fetchCjProductById,
+  fetchCjProducts,
+  type CjProductDetailResponse,
+  type CjProductListResponse,
+  type CjProductRaw,
+} from "./cj";
 import { type Product } from "@/types/product";
 
 const placeholderImage =
@@ -24,7 +30,16 @@ type CjListV2Response = CjProductListResponse & {
 
 // CJ listV2 allows size up to 100; fetch more pages when available.
 const MAX_PAGE_SIZE = 100;
-const MAX_PAGES = 30;
+const MAX_PAGES = 3;
+
+function parsePrice(value: unknown): number | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  const firstNumberMatch = String(value).match(/\d+(?:\.\d+)?/);
+  if (!firstNumberMatch) return null;
+  const parsed = parseFloat(firstNumberMatch[0]);
+  return Number.isFinite(parsed) ? parsed : null;
+}
 
 function normalizedId(item: CjProductRaw | null | undefined): string {
   if (!item) return "";
@@ -35,19 +50,40 @@ function normalizeCjProduct(item: CjProductRaw | null | undefined): Product | nu
   if (!item) return null;
 
   const id = String(item.productId ?? item.id ?? item.sku ?? item.variantId ?? item.productSku ?? "");
-  const title = item.productName ?? item.name ?? item.title ?? item.productTitle ?? "Untitled product";
+  const title =
+    item.productName ?? item.name ?? item.nameEn ?? item.title ?? item.productTitle ?? "Untitled product";
   const description =
     item.productDescription ?? item.description ?? item.shortDescription ?? "CJdropshipping product";
   const rawPrice =
-    Number(item.sellPrice ?? item.price ?? item.productPrice ?? item.retailPrice ?? item.discountPrice ?? 0);
-  const price = Number.isFinite(rawPrice) && rawPrice > 0 ? Math.round(rawPrice) : 25000;
+    parsePrice(item.sellPrice) ??
+    parsePrice(item.nowPrice) ??
+    parsePrice(item.price) ??
+    parsePrice(item.productPrice) ??
+    parsePrice(item.retailPrice) ??
+    parsePrice(item.discountPrice) ??
+    null;
+  const price = rawPrice !== null && Number.isFinite(rawPrice) && rawPrice > 0 ? Math.round(rawPrice) : 25000;
   const category =
     item.categoryName ??
     (item.categoryId ? String(item.categoryId) : undefined) ??
     (item.category ? String(item.category) : "general");
   const image = item.productImage ?? item.mainImage ?? item.image ?? placeholderImage;
-  const stock = Number.isFinite(item.inventory) ? Number(item.inventory) : Number(item.stock ?? 50);
-  const shippingTimeInDays = Number(item.deliveryTime ?? item.shippingTime ?? 7);
+  const stock = Number.isFinite(item.inventory)
+    ? Number(item.inventory)
+    : Number.isFinite(Number(item.warehouseInventoryNum))
+      ? Number(item.warehouseInventoryNum)
+      : Number.isFinite(Number(item.stock))
+        ? Number(item.stock)
+        : 50;
+  const shippingTimeInDays = (() => {
+    const cycle = item.deliveryCycle ?? item.deliveryTime ?? item.shippingTime;
+    if (typeof cycle === "string") {
+      const match = cycle.match(/\d+/);
+      if (match) return Number(match[0]);
+    }
+    const numeric = Number(cycle);
+    return Number.isFinite(numeric) ? numeric : 7;
+  })();
   const sellerName = item.storeName ?? item.supplierName ?? item.vendorName ?? "CJ Supplier";
   const sellerLocation = item.warehouseName ?? item.shipFrom ?? item.location ?? "CJ Warehouse";
   const rating = Number(item.rating ?? item.score ?? 4.6);
@@ -122,24 +158,12 @@ export async function getProducts(options: GetProductsOptions = {}): Promise<Pro
   try {
     const desired = options.limit ?? 120;
     const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(20, desired));
+    const pagesToFetch = Math.min(MAX_PAGES, Math.max(1, Math.ceil(desired / pageSize)));
 
-    // First page to discover total pages, then fetch remaining up to MAX_PAGES.
-    const firstResponse = await fetchCjProducts({
-      keyword: options.keyword,
-      categoryId: options.category,
-      page: 1,
-      size: pageSize,
-    });
+    const pages = Array.from({ length: pagesToFetch }, (_, index) => index + 1);
 
-    const firstPageList = extractCjList(firstResponse);
-    const firstTyped = firstResponse as CjListV2Response | null;
-    const totalPagesFromApi = firstTyped?.data?.totalPages ?? firstTyped?.totalPages;
-    const totalPages = Math.min(MAX_PAGES, Math.max(1, Number(totalPagesFromApi ?? 1)));
-
-    const remainingPages = Array.from({ length: Math.max(0, totalPages - 1) }, (_, index) => index + 2);
-
-    const remainingResponses = await Promise.all(
-      remainingPages.map((page) =>
+    const responses = await Promise.all(
+      pages.map((page) =>
         fetchCjProducts({
           keyword: options.keyword,
           categoryId: options.category,
@@ -149,9 +173,7 @@ export async function getProducts(options: GetProductsOptions = {}): Promise<Pro
       )
     );
 
-    const combinedRaw = dedupeProducts(
-      [firstPageList, ...remainingResponses.map((response) => extractCjList(response))].flat()
-    );
+    const combinedRaw = dedupeProducts(responses.flatMap((response) => extractCjList(response)));
 
     const normalized = shuffle(
       combinedRaw.map((item) => normalizeCjProduct(item)).filter(Boolean) as Product[]
@@ -181,9 +203,15 @@ export async function getProducts(options: GetProductsOptions = {}): Promise<Pro
 }
 
 export async function getProductById(id: string): Promise<Product | null> {
-  const products = await getProducts();
-  const found = products.find((product) => product.id === id);
-  if (found) return found;
+  try {
+    const response = await fetchCjProductById(id);
+    const payload = response as CjProductDetailResponse | null;
+    const normalized = normalizeCjProduct(payload?.data);
+    if (normalized) return normalized;
+  } catch (error) {
+    console.warn("CJdropshipping product detail fetch failed", error);
+  }
 
-  return null;
+  const products = await getProducts({ limit: 50 });
+  return products.find((product) => product.id === id) ?? null;
 }

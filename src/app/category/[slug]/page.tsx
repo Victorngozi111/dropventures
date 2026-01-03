@@ -9,19 +9,26 @@ import { formatCurrency } from "@/utils/currency";
 
 interface CategoryPageProps {
   params: Promise<{ slug: string }>;
+  searchParams?: Promise<{ q?: string; maxPrice?: string }>;
 }
 
 export const dynamic = "force-dynamic";
 
-export default async function CategoryPage({ params }: CategoryPageProps) {
+export default async function CategoryPage({ params, searchParams }: CategoryPageProps) {
   const { slug } = await params;
+  const { q, maxPrice } = (await searchParams) ?? {};
   const category = featuredCategories.find((item) => item.slug === slug);
 
   if (!category) {
     notFound();
   }
 
-  const filteredProducts = await getProducts({ category: slug, limit: 30 });
+  const filteredProducts = await getProducts({
+    keyword: q || category.name,
+    category: undefined,
+    limit: 30,
+    maxPrice: maxPrice ? Number(maxPrice) : undefined,
+  });
 
   return (
     <div className="space-y-8">
@@ -34,6 +41,32 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
           Curated products sourced via CJdropshipping with local pricing.
         </p>
       </header>
+
+      <form className="grid gap-3 rounded-2xl border border-[color:var(--border)] bg-[color:var(--surface)] p-4 sm:grid-cols-3" action={`/category/${slug}`} method="get">
+        <input type="hidden" name="slug" value={slug} />
+        <div className="sm:col-span-2">
+          <input
+            name="q"
+            defaultValue={q ?? ""}
+            placeholder="Search products or SKUs"
+            className="w-full rounded-xl border border-[color:var(--border)] bg-[color:var(--input-bg)] px-4 py-2.5 text-sm text-[color:var(--foreground)] outline-none focus:border-[color:var(--primary)] focus:ring-2 focus:ring-[color:var(--primary)]/20"
+          />
+        </div>
+        <div className="flex items-center gap-3">
+          <input
+            type="number"
+            name="maxPrice"
+            min="0"
+            step="1"
+            defaultValue={maxPrice ?? ""}
+            placeholder="Max price (USD)"
+            className="w-full rounded-xl border border-[color:var(--border)] bg-[color:var(--input-bg)] px-4 py-2.5 text-sm text-[color:var(--foreground)] outline-none focus:border-[color:var(--primary)] focus:ring-2 focus:ring-[color:var(--primary)]/20"
+          />
+          <Button type="submit" variant="accent" className="whitespace-nowrap">
+            Apply filters
+          </Button>
+        </div>
+      </form>
 
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
         {filteredProducts.length === 0 ? (

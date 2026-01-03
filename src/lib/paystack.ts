@@ -11,6 +11,23 @@ interface PaystackCheckoutOptions {
   currency?: string; // default NGN
 }
 
+type PaystackTransactionOptions = {
+  key: string;
+  amount: number;
+  email: string;
+  currency: string;
+  reference?: string;
+  metadata?: Record<string, string>;
+  onSuccess: (response: { reference: string }) => void;
+  onCancel: () => void;
+};
+
+type PaystackPopInstance = {
+  newTransaction(options: PaystackTransactionOptions): void;
+};
+
+type PaystackPopConstructor = new () => PaystackPopInstance;
+
 export async function launchPaystackCheckout(options: PaystackCheckoutOptions): Promise<void> {
   const publicKey = options.publicKey ?? process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY;
 
@@ -33,7 +50,7 @@ export async function launchPaystackCheckout(options: PaystackCheckoutOptions): 
   }
 
   // Helper to open checkout using either module import or global script.
-  const openCheckout = (PaystackPop: any) => {
+  const openCheckout = (PaystackPop: PaystackPopConstructor) => {
     const paystack = new PaystackPop();
     paystack.newTransaction({
       key: publicKey,
@@ -80,7 +97,7 @@ export async function launchPaystackCheckout(options: PaystackCheckoutOptions): 
     });
 
   await loadScript();
-  const win = window as unknown as { PaystackPop?: any };
+  const win = window as unknown as { PaystackPop?: PaystackPopConstructor };
   if (!win.PaystackPop) {
     throw new Error("Paystack SDK unavailable after CDN load");
   }

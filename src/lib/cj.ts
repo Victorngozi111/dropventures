@@ -1,6 +1,4 @@
 const CJ_BASE_URL = process.env.CJ_API_BASE_URL ?? "https://developers.cjdropshipping.com/api2.0/v1";
-const CJ_EMAIL = process.env.CJ_API_EMAIL;
-const CJ_PASSWORD = process.env.CJ_API_PASSWORD;
 const CJ_API_KEY = process.env.CJ_API_KEY;
 
 // Cache the issued access token to avoid CJ's 1 call / 300 seconds limit on getAccessToken.
@@ -14,6 +12,7 @@ export interface CjProductRaw {
   productSku?: string | number;
   productName?: string;
   name?: string;
+  nameEn?: string;
   title?: string;
   productTitle?: string;
   productDescription?: string;
@@ -24,6 +23,7 @@ export interface CjProductRaw {
   productPrice?: number | string;
   retailPrice?: number | string;
   discountPrice?: number | string;
+  nowPrice?: number | string;
   categoryName?: string;
   categoryId?: string | number;
   category?: string | number;
@@ -32,8 +32,10 @@ export interface CjProductRaw {
   image?: string;
   inventory?: number;
   stock?: number;
+  warehouseInventoryNum?: number | string;
   deliveryTime?: number | string;
   shippingTime?: number | string;
+  deliveryCycle?: number | string;
   storeName?: string;
   supplierName?: string;
   vendorName?: string;
@@ -49,10 +51,16 @@ export interface CjProductListResponse {
   list?: CjProductRaw[];
 }
 
+export interface CjProductDetailResponse {
+  data?: CjProductRaw | null;
+  code?: number;
+  message?: string;
+}
+
 async function ensureToken(): Promise<string | undefined> {
-  if (!CJ_EMAIL || !CJ_PASSWORD) {
-    console.warn("CJdropshipping credentials are missing. Provide CJ_API_EMAIL and CJ_API_PASSWORD.");
-    return CJ_API_KEY; // Fallback to legacy key if present, though it may be rejected by API 2.0.
+  if (!CJ_API_KEY) {
+    console.warn("CJdropshipping API key is missing. Provide CJ_API_KEY.");
+    return undefined;
   }
 
   const now = Date.now();
@@ -66,17 +74,17 @@ async function ensureToken(): Promise<string | undefined> {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ email: CJ_EMAIL, password: CJ_PASSWORD }),
+      body: JSON.stringify({ apiKey: CJ_API_KEY }),
       cache: "no-store",
     });
 
     if (!response.ok) {
       console.warn("Unable to sign in to CJdropshipping", await response.text());
-      return CJ_API_KEY;
+      return undefined;
     }
 
     const payload = (await response.json()) as {
-      data?: { accessToken?: string; expiresIn?: number };
+      data?: { accessToken?: string; expiresIn?: number; accessTokenExpiryDate?: string };
       code?: number;
       message?: string;
     };
@@ -84,20 +92,21 @@ async function ensureToken(): Promise<string | undefined> {
     const token = payload?.data?.accessToken;
     if (!token) {
       console.warn("CJdropshipping auth missing token", payload?.message ?? "unknown error");
-      return CJ_API_KEY;
+      return undefined;
     }
 
+    const expiresAt = payload?.data?.accessTokenExpiryDate ? Date.parse(payload.data.accessTokenExpiryDate) : undefined;
     const expiresInMs = payload?.data?.expiresIn ? payload.data.expiresIn * 1000 : undefined;
     cachedAccessToken = {
       token,
-      // Default to 4 minutes if no TTL provided to respect 300s rate-limit window.
-      expiresAt: expiresInMs ? now + expiresInMs : now + 4 * 60 * 1000,
+      // Default to ~14 days if no TTL provided; spec says 15 days.
+      expiresAt: Number.isFinite(expiresAt) ? expiresAt : expiresInMs ? now + expiresInMs : now + 14 * 24 * 60 * 60 * 1000,
     };
 
     return token;
   } catch (error) {
     console.warn("CJdropshipping auth failed", error);
-    return CJ_API_KEY;
+    return undefined;
   }
 }
 
@@ -120,6 +129,7 @@ export async function fetchCjProducts(filters: CjProductFilters = {}): Promise<C
   if (filters.categoryId) params.append("categoryId", filters.categoryId);
   params.append("page", String(filters.page ?? 1));
   params.append("size", String(filters.size ?? 20));
+  params.append("features", "enable_category");
 
   const response = await fetch(`${CJ_BASE_URL}/product/listV2?${params.toString()}`, {
     headers: {
@@ -130,6 +140,30 @@ export async function fetchCjProducts(filters: CjProductFilters = {}): Promise<C
 
   if (!response.ok) {
     console.warn("CJdropshipping products fetch failed", await response.text());
+    return null;
+  }
+
+  return response.json();
+}
+
+export async function fetchCjProductById(id: string): Promise<CjProductDetailResponse | null> {
+  const token = await ensureToken();
+
+  if (!token) return null;
+
+  const params = new URLSearchParams();
+  params.append("pid", id);
+  params.append("features", "enable_category");
+
+  const response = await fetch(`${CJ_BASE_URL}/product/query?${params.toString()}`, {
+    headers: {
+      "CJ-Access-Token": token,
+    },
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    console.warn("CJdropshipping product query failed", await response.text());
     return null;
   }
 
