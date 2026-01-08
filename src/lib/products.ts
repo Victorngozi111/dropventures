@@ -10,6 +10,10 @@ import { type Product } from "@/types/product";
 const placeholderImage =
   "https://images.unsplash.com/photo-1545239351-1141bd82e8a6?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80";
 
+const defaultUsdToNgnRate = Number(
+  process.env.NGN_PER_USD ?? process.env.NEXT_PUBLIC_NGN_PER_USD ?? 1600
+);
+
 interface GetProductsOptions {
   category?: string;
   limit?: number;
@@ -54,7 +58,7 @@ function normalizeCjProduct(item: CjProductRaw | null | undefined): Product | nu
     item.productName ?? item.name ?? item.nameEn ?? item.title ?? item.productTitle ?? "Untitled product";
   const description =
     item.productDescription ?? item.description ?? item.shortDescription ?? "CJdropshipping product";
-  const rawPrice =
+  const rawPriceUsd =
     parsePrice(item.sellPrice) ??
     parsePrice(item.nowPrice) ??
     parsePrice(item.price) ??
@@ -62,12 +66,14 @@ function normalizeCjProduct(item: CjProductRaw | null | undefined): Product | nu
     parsePrice(item.retailPrice) ??
     parsePrice(item.discountPrice) ??
     null;
-  const price = rawPrice !== null && Number.isFinite(rawPrice) && rawPrice > 0 ? Math.round(rawPrice) : 25000;
+  const usdPrice = rawPriceUsd !== null && Number.isFinite(rawPriceUsd) && rawPriceUsd > 0 ? rawPriceUsd : 12;
+  const exchangeRate = Number.isFinite(defaultUsdToNgnRate) && defaultUsdToNgnRate > 0 ? defaultUsdToNgnRate : 1600;
+  const price = Math.max(500, Math.round(usdPrice * exchangeRate));
   const category =
     item.categoryName ??
     (item.categoryId ? String(item.categoryId) : undefined) ??
     (item.category ? String(item.category) : "general");
-  const image = item.productImage ?? item.mainImage ?? item.image ?? placeholderImage;
+  const image = item.bigImage ?? item.productImage ?? item.mainImage ?? item.image ?? placeholderImage;
   const stock = Number.isFinite(item.inventory)
     ? Number(item.inventory)
     : Number.isFinite(Number(item.warehouseInventoryNum))
