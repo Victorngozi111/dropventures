@@ -24,6 +24,7 @@ export interface CjProductRaw {
   retailPrice?: number | string;
   discountPrice?: number | string;
   nowPrice?: number | string;
+  bigImage?: string;
   categoryName?: string;
   categoryId?: string | number;
   category?: string | number;
