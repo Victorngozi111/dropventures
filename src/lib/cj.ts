@@ -130,7 +130,7 @@ export async function fetchCjProducts(filters: CjProductFilters = {}): Promise<C
   if (filters.categoryId) params.append("categoryId", filters.categoryId);
   params.append("page", String(filters.page ?? 1));
   params.append("size", String(filters.size ?? 20));
-  params.append("features", "enable_category");
+  params.append("features", "enable_category,enable_description,enable_inventory");
 
   const response = await fetch(`${CJ_BASE_URL}/product/listV2?${params.toString()}`, {
     headers: {
@@ -154,7 +154,7 @@ export async function fetchCjProductById(id: string): Promise<CjProductDetailRes
 
   const params = new URLSearchParams();
   params.append("pid", id);
-  params.append("features", "enable_category");
+  params.append("features", "enable_category,enable_description,enable_inventory");
 
   const response = await fetch(`${CJ_BASE_URL}/product/query?${params.toString()}`, {
     headers: {
