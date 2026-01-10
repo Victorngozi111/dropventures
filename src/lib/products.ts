@@ -35,6 +35,23 @@ type CjListV2Response = CjProductListResponse & {
 // CJ listV2 allows size up to 100; fetch more pages when available.
 const MAX_PAGE_SIZE = 100;
 const MAX_PAGES = 3;
+const PRODUCT_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+type CachedProducts = {
+  expiresAt: number;
+  items: Product[];
+};
+
+const productCache = new Map<string, CachedProducts>();
+
+function cacheKey(options: GetProductsOptions): string {
+  return JSON.stringify({
+    keyword: options.keyword ?? null,
+    category: options.category ?? null,
+    maxPrice: options.maxPrice ?? null,
+    limit: options.limit ?? null,
+  });
+}
 
 function parsePrice(value: unknown): number | null {
   if (value === undefined || value === null) return null;
@@ -161,6 +178,13 @@ function sortByPriceAscending(list: Product[]): Product[] {
 }
 
 export async function getProducts(options: GetProductsOptions = {}): Promise<Product[]> {
+  const key = cacheKey(options);
+  const now = Date.now();
+  const cached = productCache.get(key);
+  if (cached && cached.expiresAt > now) {
+    return cached.items;
+  }
+
   try {
     const desired = options.limit ?? 120;
     const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(20, desired));
@@ -199,7 +223,10 @@ export async function getProducts(options: GetProductsOptions = {}): Promise<Pro
     const prioritized = options.maxPrice ? sortByPriceAscending(filtered) : filtered;
     const sliced = options.limit ? prioritized.slice(0, options.limit) : prioritized;
 
-    if (sliced.length > 0) return sliced;
+    if (sliced.length > 0) {
+      productCache.set(key, { expiresAt: now + PRODUCT_CACHE_TTL_MS, items: sliced });
+      return sliced;
+    }
   } catch (error) {
     console.warn("CJdropshipping fetch failed; falling back to mock data", error);
   }
