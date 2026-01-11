@@ -34,7 +34,7 @@ type CjListV2Response = CjProductListResponse & {
 
 // CJ listV2 allows size up to 100; fetch more pages when available.
 const MAX_PAGE_SIZE = 100;
-const MAX_PAGES = 3;
+const MAX_PAGES = 10;
 const PRODUCT_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 type CachedProducts = {
@@ -85,7 +85,9 @@ function normalizeCjProduct(item: CjProductRaw | null | undefined): Product | nu
     null;
   const usdPrice = rawPriceUsd !== null && Number.isFinite(rawPriceUsd) && rawPriceUsd > 0 ? rawPriceUsd : 12;
   const exchangeRate = Number.isFinite(defaultUsdToNgnRate) && defaultUsdToNgnRate > 0 ? defaultUsdToNgnRate : 1600;
-  const price = Math.max(500, Math.round(usdPrice * exchangeRate));
+  const priceNgn = usdPrice * exchangeRate;
+  const priceWithMarkup = priceNgn * 1.1; // add 10% markup after FX
+  const price = Math.max(500, Math.round(priceWithMarkup));
   const category =
     item.categoryName ??
     (item.categoryId ? String(item.categoryId) : undefined) ??
